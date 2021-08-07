@@ -89,6 +89,9 @@ end
 
 while true do
 
+  io.write("Continue ? [Y/n] : ")
+  if io.read() == "n" then break end
+
   local freqTotal = 0
 
   for i,j in pairs(dict) do
@@ -181,10 +184,6 @@ while true do
     io.write("Done!\n\n")
     break
   end
-
-
-  io.write("Once again? [Y/n] : ")
-  if io.read() == "n" then break end
 
 end
 
