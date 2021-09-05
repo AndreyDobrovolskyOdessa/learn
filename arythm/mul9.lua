@@ -1,6 +1,10 @@
 return {
 
-["9x9"] = "81",
+  lang = { "multiply" , "number" },
+
+  data = {
+    {"9x9","81",},
+  },
 
 }
 

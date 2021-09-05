@@ -1,0 +1,6 @@
+return {
+  pairs = {
+    {"multiply", "number",},
+  },
+}
+
