@@ -9,8 +9,13 @@ local dict = {
   data = {},
 }
 
-local saved_name = "learn.save"
 
+local query_mt = {
+  __index = function(t,k)
+              t[k] = {[0] = {4, 0}}
+              return t[k]
+            end
+}
 
 
 local AppendDict = function(new_dict)
@@ -40,7 +45,7 @@ local AppendDict = function(new_dict)
       local langQ = dict.lang[j[1]]
       local langA = dict.lang[j[2]]
       if not dict.query[langQ] then dict.query[langQ] = {} end
-      if not dict.query[langQ][langA] then dict.query[langQ][langA] = {} end
+      if not dict.query[langQ][langA] then dict.query[langQ][langA] = setmetatable({}, query_mt) end
     end
   end
 end
@@ -66,13 +71,20 @@ local CollectVocabularies = function()
 end
 
 
+local AnswerFor = function(q)
+  return dict.query[q[1]][q[2]][q[3]]
+end
+
+
 local TraverseQueryWith = function(f)
   for langQ=1,#dict.lang do
     if dict.query[langQ] then
       for langA=1,#dict.lang do
         if dict.query[langQ][langA] then
           for i,wordQ in ipairs(dict.vocabulary[langQ]) do
-            local result = f(langQ, langA, i, wordQ)
+            local question = {langQ, langA, i}
+            local answer = AnswerFor(question)
+            local result = f(question, answer, wordQ)
             if result ~= nil then return result end
           end
         end
@@ -89,29 +101,21 @@ local FillQuery = function()
   dict.freq_total = 0
 
   TraverseQueryWith(
-    function(langQ, langA, i, wordQ)
-      dict.query[langQ][langA][i] = {}
-      local answer = dict.query[langQ][langA][i]
-      answer[0] = {initial_freq, 0}
-      for j,data_line in ipairs(dict.vocabulary[langQ][wordQ]) do
-        if dict.data[data_line][langA] then
-          for k,wordA in ipairs(dict.data[data_line][langA]) do
+    function(question, answer, wordQ)
+      for j,data_line in ipairs(dict.vocabulary[question[1]][wordQ]) do
+        if dict.data[data_line][question[2]] then
+          for k,wordA in ipairs(dict.data[data_line][question[2]]) do
             if not answer[wordA] then
               table.insert(answer, wordA)
-              answer[wordA] = {initial_freq, 0}
+              answer[wordA] = {answer[0][1], 0}
             end
           end
         end
       end
-      dict.freq_total = dict.freq_total + initial_freq
+      dict.freq_total = dict.freq_total + answer[0][1]
     end
   )
 end 
-
-
-local AnswerFor = function(q)
-  return dict.query[q[1]][q[2]][q[3]]
-end
 
 
 local RestoreFreq = function()
@@ -133,7 +137,7 @@ end
 local SelectWordQ = function()
 
   if dict.freq_total == 0 then
-   io.write("\nDone!\n\n")
+    io.write("\nDone!\n\n")
     return false
   end
 
@@ -146,16 +150,14 @@ local SelectWordQ = function()
   local freq = 0
 
   return TraverseQueryWith(
-    function(langQ, langA, i, wordQ)
-      local cur = {langQ, langA, i}
-      local answer = AnswerFor(cur)
+    function(question, answer)
       freq = freq + answer[0][1]
       if freq >= dice then
         RestoreFreq()
         dict.freq_total = dict.freq_total - answer[0][1]
         answer[0][1] = 0
         answer[0][2] = answer[0][2] + 1
-        dict.question = cur
+        dict.question = question
         return true
       end  
     end
@@ -226,20 +228,18 @@ end
 local ShowStats = function()
 
   local questions_total = 0
-  local hist = {[0] = 0, 0,0,0,0,0, ["*"] = 0,}
+  local sym = "*"
+  local hist = {[0] = 0, 0,0,0,0,0,0,0,0,0, [sym] = 0,}
 
   TraverseQueryWith(
-    function(langQ, langA, i, wordQ)
-      local cur = {langQ, langA, i}
-      local answer = AnswerFor(cur)
+    function(question, answer)
       questions_total = questions_total + answer[0][2]
       for j,wordA in ipairs(answer) do
         local k = answer[wordA][2]
         if k > #hist then
-          hist["*"] = hist["*"] + 1
-        else
-          hist[k] = hist[k] + 1
+          k = sym
         end
+        hist[k] = hist[k] + 1
       end
     end
   )
@@ -262,7 +262,7 @@ local ShowStats = function()
     ShowNumber(i)
   end
 
-  ShowNumber("*")
+  ShowNumber(sym)
 
   io.write("\n")
 
@@ -270,6 +270,9 @@ end
 
 
 io.write("Learn 0.1 Copyright (C) 2021 Andrey Dobrovolsky\n")
+
+
+local saved_name = "learn.save"
 
 
 if #arg == 0 then
