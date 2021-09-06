@@ -226,7 +226,7 @@ end
 local ShowStats = function()
 
   local questions_total = 0
-  local hist = {}
+  local hist = {[0] = 0, 0,0,0,0,0, ["*"] = 0,}
 
   TraverseQueryWith(
     function(langQ, langA, i, wordQ)
@@ -235,16 +235,34 @@ local ShowStats = function()
       questions_total = questions_total + answer[0][2]
       for j,wordA in ipairs(answer) do
         local k = answer[wordA][2]
-        hist[k] = hist[k] and hist[k] + 1 or 1
+        if k > #hist then
+          hist["*"] = hist["*"] + 1
+        else
+          hist[k] = hist[k] + 1
+        end
       end
     end
   )
 
   io.write("\nQuestions total = ", questions_total, "\n\n")
 
-  for i=0,9 do
-    io.write(i," ",string.rep("#",hist[i] or 0),"\n")
+  local ShowNumber = function(i)
+    io.write(i," ")
+
+    local l = hist[i]
+    while l > 0 do
+      io.write("#")
+      l = l // 2
+    end
+    if hist[i] > 2 then io.write(" ", hist[i]) end
+    io.write("\n")
   end
+
+  for i=0,#hist do
+    ShowNumber(i)
+  end
+
+  ShowNumber("*")
 
   io.write("\n")
 
