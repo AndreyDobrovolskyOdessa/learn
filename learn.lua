@@ -94,9 +94,6 @@ local TraverseQueryWith = function(f)
 end
 
 
-local initial_freq = 4
-
-
 local FillQuery = function()
   dict.freq_total = 0
 
@@ -248,11 +245,8 @@ local ShowStats = function()
 
   local ShowNumber = function(i)
     io.write(i," ")
-
-    local l = hist[i]
-    while l > 0 do
+    for l in function(s,v) return v > 0 and v // 2 or nil end, nil, hist[i] do
       io.write("#")
-      l = l // 2
     end
     if hist[i] > 2 then io.write(" ", hist[i]) end
     io.write("\n")
