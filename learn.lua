@@ -160,7 +160,7 @@ local SelectWordQ = function()
         answer[0][1] = 0
         answer[0][2] = answer[0][2] + 1
         dict.question = question
-        correct = AnswerFor(question)
+        correct = answer
         return true
       end  
     end
