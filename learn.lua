@@ -187,39 +187,32 @@ end
 
 
 local CheckAnswer = function(answer)
-  local present = {}
-  local success = true
+  local good = {}
+  local bad = {}
 
   local indent = string.rep(" ",utf8.len(dict.lang[dict.question[2]]) + 3)
 
   for i,word in ipairs(answer) do
-    if correct[word] then
-      present[word] = true
-    else
-      present[word] = false
-      success = false
-    end
+    table.insert(correct[word] and good or bad, word)
   end
 
-  if success then
-    for word,i in pairs(present) do
-      correct[word][1] = correct[word][1] // 2
-      correct[word][2] = correct[word][2] + 1
-    end
-  else
+  for i,word in ipairs(good) do
+    correct[word][1] = correct[word][1] // 2
+    correct[word][2] = correct[word][2] + 1
+  end
+
+  if #bad > 0 or #good == 0 then
     for i,word in ipairs(correct) do
       correct[word][1] = dict.freq_total
       correct[word][2] = 0
     end
-    io.write("\n\nErrors :\n\n")
-    for word,i in pairs(present) do
-      if not correct[word] then
-        io.write(indent, word, "\n")
-      end
+    io.write("\n\nError!\n\n")
+    for i,word in ipairs(bad) do
+      io.write(indent, word, "\n")
     end
   end
 
-  io.write("\n\nAnswer :\n\n")
+  io.write("\n\nCorrect :\n\n")
   for i,word in ipairs(correct) do
     io.write(indent,string.format("%-40s",word),correct[word][1],"\n")
   end
