@@ -83,9 +83,8 @@ local TraverseQueryWith = function(f)
         if dict.query[langQ][langA] then
           for i,wordQ in ipairs(dict.vocabulary[langQ]) do
             local question = {langQ, langA, i}
-            local answer = AnswerFor(question)
 
-            local result = f(question, answer, wordQ)
+            local result = f(question, AnswerFor(question), wordQ)
 
             if result ~= nil then
               return result
