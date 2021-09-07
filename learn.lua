@@ -84,8 +84,12 @@ local TraverseQueryWith = function(f)
           for i,wordQ in ipairs(dict.vocabulary[langQ]) do
             local question = {langQ, langA, i}
             local answer = AnswerFor(question)
+
             local result = f(question, answer, wordQ)
-            if result ~= nil then return result end
+
+            if result ~= nil then
+              return result
+            end
           end
         end
       end
@@ -115,9 +119,12 @@ local FillQuery = function()
 end 
 
 
+local correct
+
+
 local RestoreFreq = function()
   if dict.question then
-    local correct = AnswerFor(dict.question)
+    local correct = correct or AnswerFor(dict.question)
     dict.freq_total = dict.freq_total - correct[0][1]
     for i,word in ipairs(correct) do
       if correct[0][1] < correct[word][1] then
@@ -125,8 +132,6 @@ local RestoreFreq = function()
       end
     end
     dict.freq_total = dict.freq_total + correct[0][1]
-  else
-    dict.question = {}
   end
 end
 
@@ -155,6 +160,7 @@ local SelectWordQ = function()
         answer[0][1] = 0
         answer[0][2] = answer[0][2] + 1
         dict.question = question
+        correct = AnswerFor(question)
         return true
       end  
     end
@@ -169,7 +175,6 @@ end
 
 
 local InputAnswer = function()
-  local correct = AnswerFor(dict.question)
   local answer = {}
   for i=1,#correct do
     io.write(dict.lang[dict.question[2]], " : ")
@@ -182,7 +187,6 @@ end
 
 
 local CheckAnswer = function(answer)
-  local correct = AnswerFor(dict.question)
   local present = {}
   local success = true
 
@@ -241,15 +245,18 @@ local ShowStats = function()
     end
   )
 
-  io.write("\nQuestions total = ", questions_total, "\n\n")
+  io.write("\nQuestions total = ", questions_total, "\n")
 
   local ShowNumber = function(i)
-    io.write(i," ")
-    for l in function(s,v) return v > 0 and v // 2 or nil end, nil, hist[i] do
+    local h = hist[i]
+
+    io.write("\n",i," ")
+    for _ in function(s,v) return v > 0 and v // 2 or nil end, nil, h do
       io.write("#")
     end
-    if hist[i] > 2 then io.write(" ", hist[i]) end
-    io.write("\n")
+    if h > 2 then
+      io.write(" ", h)
+    end
   end
 
   for i=0,#hist do
@@ -258,7 +265,7 @@ local ShowStats = function()
 
   ShowNumber(sym)
 
-  io.write("\n")
+  io.write("\n\n")
 
 end
 
