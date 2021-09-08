@@ -26,11 +26,11 @@ local freq_init
 local AdjustConstants = function()
   success_max = dict.success_max or 3
   freq_decrement_base = dict.freq_decrement_base or 2
-  repetition_suppress_ratio = dict.repetition_suppress_ratio or 10
+  repetition_suppress_ratio = dict.repetition_suppress_ratio or 100
 
   success_max = math.min(math.max(math.floor(success_max), 1), 9)
   freq_decrement_base = math.min(math.max(freq_decrement_base, 1), 4)
-  repetition_suppress_ratio = math.min(math.max(repetition_suppress_ratio, 1), 10)
+  repetition_suppress_ratio = math.min(math.max(repetition_suppress_ratio, 1), 100)
 
   dict.success_max = dict.success_max and success_max
   dict.freq_decrement_base = dict.freq_decrement_base and freq_decrement_base 
@@ -325,20 +325,19 @@ local saved_name = "learn.save"
 
 if #arg == 0 then
   dict = dofile(saved_name)
-  AdjustConstants()
 else
   for i,name in ipairs(arg) do
     AppendDict(dofile(name))
   end
   if dict.query then
     CollectVocabularies()
-    AdjustConstants()
-    FillQuery()
   end
 end
 
+AdjustConstants()
 
 if dict.query then
+  FillQuery()
   math.randomseed(os.time())
   while SelectWordQ() do
     ShowQuestion()
@@ -349,8 +348,5 @@ end
 
 
 io.output(saved_name) io.write("return ") Serialize(dict) io.write("\n")
-
-os.exit()
-
 
 
