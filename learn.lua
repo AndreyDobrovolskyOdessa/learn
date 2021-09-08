@@ -182,7 +182,7 @@ local RestoreFreq = function()
 end
 
 
-local SelectWordQ = function()
+local SelectQuestion = function()
 
   if dict.freq_total == 0 then
     io.write("\nDone!\n\n")
@@ -336,7 +336,7 @@ AdjustConstants()
 if dict.query then
   FillQuery()
   math.randomseed(os.time())
-  while SelectWordQ() do
+  while SelectQuestion() do
     CheckAnswer(InputAnswer())
   end
   ShowStats()
