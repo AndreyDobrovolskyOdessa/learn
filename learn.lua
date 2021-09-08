@@ -10,9 +10,16 @@ local dict = {
 }
 
 
+local success_max = 3
+local freq_decrement_base = 2
+local repetition_suppress_ratio = 10
+
+local freq_init_min = math.floor(math.ceil(freq_decrement_base) ^ success_max)
+local freq_init = freq_init_min * repetition_suppress_ratio
+
 local query_mt = {
   __index = function(t,k)
-              t[k] = {[0] = {4, 0}}
+              t[k] = {[0] = {freq_init, 0}}
               return t[k]
             end
 }
@@ -121,15 +128,20 @@ end
 local correct
 
 
+local MaxFreq = function(ans)
+  local m = 0
+  for i,word in ipairs(ans) do
+    m = math.max(m, ans[word][1])
+  end
+  return m
+end
+
+
 local RestoreFreq = function()
   if dict.question then
     local correct = correct or AnswerFor(dict.question)
     dict.freq_total = dict.freq_total - correct[0][1]
-    for i,word in ipairs(correct) do
-      if correct[0][1] < correct[word][1] then
-        correct[0][1] = correct[word][1]
-      end
-    end
+    correct[0][1] = MaxFreq(correct)
     dict.freq_total = dict.freq_total + correct[0][1]
   end
 end
@@ -155,9 +167,13 @@ local SelectWordQ = function()
       freq = freq + answer[0][1]
       if freq >= dice then
         RestoreFreq()
+
         dict.freq_total = dict.freq_total - answer[0][1]
-        answer[0][1] = 0
+        answer[0][1] = 1
         answer[0][2] = answer[0][2] + 1
+        dict.freq_total = dict.freq_total + answer[0][1]
+
+
         dict.question = question
         correct = answer
         return true
@@ -196,13 +212,18 @@ local CheckAnswer = function(answer)
   end
 
   for i,word in ipairs(good) do
-    correct[word][1] = correct[word][1] // 2
-    correct[word][2] = correct[word][2] + 1
+    if correct[word][2] < success_max then
+      correct[word][1] = math.floor(correct[word][1] / freq_decrement_base)
+      correct[word][2] = correct[word][2] + 1
+    end
+    if correct[word][2] >= success_max then
+      correct[word][1] = 0
+    end
   end
 
   if #bad > 0 or #good == 0 then
     for i,word in ipairs(correct) do
-      correct[word][1] = dict.freq_total
+      correct[word][1] = math.max(dict.freq_total, freq_init)
       correct[word][2] = 0
     end
     io.write("\n\nError!\n\n")
@@ -211,9 +232,14 @@ local CheckAnswer = function(answer)
     end
   end
 
+  if MaxFreq(correct) == 0 then
+    dict.freq_total = dict.freq_total - correct[0][1]
+    correct[0][1] = 0
+  end
+
   io.write("\n\nCorrect :\n\n")
   for i,word in ipairs(correct) do
-    io.write(indent,string.format("%-40s",word),correct[word][1],"\n")
+    io.write(indent, word, " ", string.rep("+", correct[word][2]), "\n")
   end
 end
 
@@ -221,18 +247,14 @@ end
 local ShowStats = function()
 
   local questions_total = 0
-  local sym = "*"
-  local hist = {[0] = 0, 0,0,0,0,0,0,0,0,0, [sym] = 0,}
+  local hist = {}
 
   TraverseQueryWith(
     function(question, answer)
       questions_total = questions_total + answer[0][2]
       for j,wordA in ipairs(answer) do
         local k = answer[wordA][2]
-        if k > #hist then
-          k = sym
-        end
-        hist[k] = hist[k] + 1
+        hist[k] = hist[k] and hist[k] + 1 or 1
       end
     end
   )
@@ -240,7 +262,7 @@ local ShowStats = function()
   io.write("\nQuestions total = ", questions_total, "\n")
 
   local ShowNumber = function(i)
-    local h = hist[i]
+    local h = hist[i] or 0
 
     io.write("\n",i," ")
     for _ in function(s,v) return v > 0 and v // 2 or nil end, nil, h do
@@ -251,18 +273,16 @@ local ShowStats = function()
     end
   end
 
-  for i=0,#hist do
+  for i=0,success_max do
     ShowNumber(i)
   end
 
-  ShowNumber(sym)
-
-  io.write("\n\n")
+  io.write("\n\nMemory usage = ", math.ceil(collectgarbage("count")), " kB\n\n")
 
 end
 
 
-io.write("Learn 0.1 Copyright (C) 2021 Andrey Dobrovolsky\n")
+io.write("Learn 0.2 Copyright (C) 2021 Andrey Dobrovolsky\n")
 
 
 local saved_name = "learn.save"
