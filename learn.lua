@@ -9,13 +9,21 @@ local dict = {
   data = {},
 }
 
+------------------------------------
+-- Constants -----------------------
+------------------------------------
 
 local success_max = 3
-local freq_decrement_base = 2
-local repetition_suppress_ratio = 10
+local freq_decrement_base = 1.5
+local repetition_suppress_ratio = 10.8
 
-local freq_init_min = math.floor(math.ceil(freq_decrement_base) ^ success_max)
-local freq_init = freq_init_min * repetition_suppress_ratio
+------------------------------------
+
+
+success_max = math.max(math.floor(success_max), 1)
+
+local freq_init_min = math.ceil(freq_decrement_base) ^ success_max
+local freq_init = math.ceil(freq_init_min * repetition_suppress_ratio)
 
 local query_mt = {
   __index = function(t,k)
