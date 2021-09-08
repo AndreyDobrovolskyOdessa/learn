@@ -9,21 +9,36 @@ local dict = {
   data = {},
 }
 
-------------------------------------
--- Constants -----------------------
-------------------------------------
+-------------------------------------------
+-- Constants ------------------------------
+-------------------------------------------
 
-local success_max = 3
-local freq_decrement_base = 1.5
-local repetition_suppress_ratio = 10.8
+local success_max
+local freq_decrement_base
+local repetition_suppress_ratio
 
-------------------------------------
+-------------------------------------------
 
+local freq_init
 
-success_max = math.max(math.floor(success_max), 1)
+-------------------------------------------
 
-local freq_init_min = math.ceil(freq_decrement_base) ^ success_max
-local freq_init = math.ceil(freq_init_min * repetition_suppress_ratio)
+local AdjustConstants = function()
+  success_max = dict.success_max or 3
+  freq_decrement_base = dict.freq_decrement_base or 2
+  repetition_suppress_ratio = dict.repetition_suppress_ratio or 10
+
+  success_max = math.min(math.max(math.floor(success_max), 1), 9)
+  freq_decrement_base = math.min(math.max(freq_decrement_base, 1), 4)
+  repetition_suppress_ratio = math.min(math.max(repetition_suppress_ratio, 1), 10)
+
+  dict.success_max = dict.success_max and success_max
+  dict.freq_decrement_base = dict.freq_decrement_base and freq_decrement_base 
+  dict.repetition_suppress_ratio = dict.repetition_suppress_ratio and repetition_suppress_ratio 
+
+  freq_init = math.ceil((math.ceil(freq_decrement_base) ^ success_max) * repetition_suppress_ratio)
+end
+
 
 local query_mt = {
   __index = function(t,k)
@@ -62,6 +77,18 @@ local AppendDict = function(new_dict)
       if not dict.query[langQ] then dict.query[langQ] = {} end
       if not dict.query[langQ][langA] then dict.query[langQ][langA] = setmetatable({}, query_mt) end
     end
+  end
+
+  if new_dict.success_max then
+    dict.success_max = new_dict.success_max
+  end
+
+  if new_dict.freq_decrement_base then
+    dict.freq_decrement_base = new_dict.freq_decrement_base
+  end
+
+  if new_dict.repetition_suppress_ratio then
+    dict.repetition_suppress_ratio = new_dict.repetition_suppress_ratio
   end
 end
 
@@ -298,30 +325,25 @@ local saved_name = "learn.save"
 
 if #arg == 0 then
   dict = dofile(saved_name)
+  AdjustConstants()
 else
-
   for i,name in ipairs(arg) do
     AppendDict(dofile(name))
   end
-
   if dict.query then
     CollectVocabularies()
+    AdjustConstants()
     FillQuery()
   end
-
 end
 
 
-
 if dict.query then
-
   math.randomseed(os.time())
-
   while SelectWordQ() do
     ShowQuestion()
     CheckAnswer(InputAnswer())
   end
-
   ShowStats()
 end
 
