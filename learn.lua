@@ -218,13 +218,10 @@ local SelectWordQ = function()
 end
 
 
-local ShowQuestion = function()
+local InputAnswer = function()
   io.write(dict.lang[dict.question[1]], " : ")
   io.write(dict.vocabulary[dict.question[1]][dict.question[3]], "\n\n")
-end
 
-
-local InputAnswer = function()
   local answer = {}
   for i=1,#correct do
     io.write(dict.lang[dict.question[2]], " : ")
@@ -340,7 +337,6 @@ if dict.query then
   FillQuery()
   math.randomseed(os.time())
   while SelectWordQ() do
-    ShowQuestion()
     CheckAnswer(InputAnswer())
   end
   ShowStats()

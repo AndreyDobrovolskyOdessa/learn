@@ -1,6 +1,6 @@
 return {
-  success_max = 200,
-  freq_decrement_base = 1000,
-  repetition_suppress_ratio = -51,
+  success_max = 2,
+  freq_decrement_base = 1,
+  repetition_suppress_ratio = 1,
 }
 
