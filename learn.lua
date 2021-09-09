@@ -15,7 +15,6 @@ local dict = {
 
 local success_max
 local freq_decrement_base
-local repetition_suppress_ratio
 
 -------------------------------------------
 
@@ -26,17 +25,14 @@ local freq_init
 local AdjustConstants = function()
   success_max = dict.success_max or 3
   freq_decrement_base = dict.freq_decrement_base or 2
-  repetition_suppress_ratio = dict.repetition_suppress_ratio or 100
 
   success_max = math.min(math.max(math.floor(success_max), 1), 9)
   freq_decrement_base = math.min(math.max(freq_decrement_base, 1), 4)
-  repetition_suppress_ratio = math.min(math.max(repetition_suppress_ratio, 1), 100)
 
   dict.success_max = dict.success_max and success_max
   dict.freq_decrement_base = dict.freq_decrement_base and freq_decrement_base 
-  dict.repetition_suppress_ratio = dict.repetition_suppress_ratio and repetition_suppress_ratio 
 
-  freq_init = math.ceil((math.ceil(freq_decrement_base) ^ success_max) * repetition_suppress_ratio)
+  freq_init = math.ceil(math.ceil(freq_decrement_base) ^ success_max)
 end
 
 
@@ -86,10 +82,6 @@ local AppendDict = function(new_dict)
   if new_dict.freq_decrement_base then
     dict.freq_decrement_base = new_dict.freq_decrement_base
   end
-
-  if new_dict.repetition_suppress_ratio then
-    dict.repetition_suppress_ratio = new_dict.repetition_suppress_ratio
-  end
 end
 
 
@@ -125,11 +117,8 @@ local TraverseQueryWith = function(f)
         if dict.query[langQ][langA] then
           for i,wordQ in ipairs(dict.vocabulary[langQ]) do
             local question = {langQ, langA, i}
-
-            local result = f(question, AnswerFor(question), wordQ)
-
-            if result ~= nil then
-              return result
+            if f(question, AnswerFor(question), wordQ) then
+              return
             end
           end
         end
@@ -149,7 +138,7 @@ local FillQuery = function()
           for k,wordA in ipairs(dict.data[data_line][question[2]]) do
             if not answer[wordA] then
               table.insert(answer, wordA)
-              answer[wordA] = {answer[0][1], 0}
+              answer[wordA] = {freq_init, 0}
             end
           end
         end
@@ -172,13 +161,15 @@ local MaxFreq = function(ans)
 end
 
 
+local ChangeFreq = function(t, v)
+    dict.freq_total = dict.freq_total - t[1]
+    t[1] = v
+    dict.freq_total = dict.freq_total + v
+end
+
+
 local RestoreFreq = function()
-  if dict.question then
-    local correct = correct or AnswerFor(dict.question)
-    dict.freq_total = dict.freq_total - correct[0][1]
-    correct[0][1] = MaxFreq(correct)
-    dict.freq_total = dict.freq_total + correct[0][1]
-  end
+  ChangeFreq((correct or AnswerFor(dict.question))[0], dict.freq_buf)
 end
 
 
@@ -189,36 +180,38 @@ local SelectQuestion = function()
     return false
   end
 
-  io.write("\n\nNext question? [ Yn ] : ")
-  if io.read() ~= "" then return false end
-
-  os.execute("clear")
-
   local dice = math.random(dict.freq_total)
   local freq = 0
 
-  return TraverseQueryWith(
+  TraverseQueryWith(
     function(question, answer)
       freq = freq + answer[0][1]
       if freq >= dice then
-        RestoreFreq()
+        if dict.question then
+          RestoreFreq()
+        end
 
-        dict.freq_total = dict.freq_total - answer[0][1]
-        answer[0][1] = 1
+        if dict.freq_total > answer[0][1] then
+          ChangeFreq(answer[0], 0)
+        end
+
         answer[0][2] = answer[0][2] + 1
-        dict.freq_total = dict.freq_total + answer[0][1]
-
 
         dict.question = question
         correct = answer
+
         return true
       end  
     end
   )
+
+  return true
 end
 
 
 local InputAnswer = function()
+  os.execute("clear")
+
   io.write(dict.lang[dict.question[1]], " : ")
   io.write(dict.vocabulary[dict.question[1]][dict.question[3]], "\n\n")
 
@@ -229,6 +222,7 @@ local InputAnswer = function()
     if next_answer == "" then break end
     table.insert(answer,next_answer)
   end
+
   return answer
 end
 
@@ -244,19 +238,22 @@ local CheckAnswer = function(answer)
   end
 
   for i,word in ipairs(good) do
-    if correct[word][2] < success_max then
-      correct[word][1] = math.floor(correct[word][1] / freq_decrement_base)
-      correct[word][2] = correct[word][2] + 1
+    local cw = correct[word]
+    if cw[2] < success_max then
+      cw[1] = math.floor(cw[1] / freq_decrement_base)
+      cw[2] = cw[2] + 1
     end
-    if correct[word][2] >= success_max then
-      correct[word][1] = 0
+    if cw[2] >= success_max then
+      cw[1] = 0
     end
   end
 
   if #bad > 0 or #good == 0 then
+    local cw_init = math.max(dict.freq_total, freq_init)
     for i,word in ipairs(correct) do
-      correct[word][1] = math.max(dict.freq_total, freq_init)
-      correct[word][2] = 0
+      local cw = correct[word]
+      cw[1] = cw_init
+      cw[2] = 0
     end
     io.write("\n\nError!\n\n")
     for i,word in ipairs(bad) do
@@ -264,15 +261,23 @@ local CheckAnswer = function(answer)
     end
   end
 
-  if MaxFreq(correct) == 0 then
-    dict.freq_total = dict.freq_total - correct[0][1]
-    correct[0][1] = 0
-  end
-
   io.write("\n\nCorrect :\n\n")
   for i,word in ipairs(correct) do
     io.write(indent, word, " ", string.rep("+", correct[word][2]), "\n")
   end
+
+  dict.freq_buf = MaxFreq(correct)
+
+  if correct[0][1] == dict.freq_total then
+    ChangeFreq(correct[0], dict.freq_buf)
+    if dict.freq_total == 0 then
+      return true
+    end
+  end
+
+  io.write("\n\nNext question? [ Yn ] : ")
+  return io.read() == ""
+
 end
 
 
@@ -314,7 +319,7 @@ local ShowStats = function()
 end
 
 
-io.write("Learn 0.2 Copyright (C) 2021 Andrey Dobrovolsky\n")
+io.write("Learn 0.3 Copyright (C) 2021 Andrey Dobrovolsky\n")
 
 
 local saved_name = "learn.save"
@@ -336,9 +341,9 @@ AdjustConstants()
 if dict.query then
   FillQuery()
   math.randomseed(os.time())
-  while SelectQuestion() do
-    CheckAnswer(InputAnswer())
-  end
+
+  while SelectQuestion() and CheckAnswer(InputAnswer()) do end
+
   ShowStats()
 end
 
