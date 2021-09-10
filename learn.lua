@@ -27,7 +27,7 @@ local AdjustConstants = function()
   freq_decrement_base = dict.freq_decrement_base or 2
 
   success_max = math.min(math.max(math.floor(success_max), 1), 9)
-  freq_decrement_base = math.min(math.max(freq_decrement_base, 1), 4)
+  freq_decrement_base = math.min(math.max(freq_decrement_base, 1), 10)
 
   dict.success_max = dict.success_max and success_max
   dict.freq_decrement_base = dict.freq_decrement_base and freq_decrement_base 
@@ -128,6 +128,15 @@ local TraverseQueryWith = function(f)
 end
 
 
+local MaxFreq = function(ans)
+  local m = 0
+  for i,word in ipairs(ans) do
+    m = math.max(m, ans[word][1])
+  end
+  return m
+end
+
+
 local FillQuery = function()
   dict.freq_total = 0
 
@@ -150,15 +159,6 @@ end
 
 
 local correct
-
-
-local MaxFreq = function(ans)
-  local m = 0
-  for i,word in ipairs(ans) do
-    m = math.max(m, ans[word][1])
-  end
-  return m
-end
 
 
 local ChangeFreq = function(t, v)
@@ -225,6 +225,27 @@ local InputAnswer = function()
 end
 
 
+local Reward = function(w)
+  if w[2] < success_max then
+    w[1] = math.floor(w[1] / freq_decrement_base)
+    w[2] = w[2] + 1
+  end
+  if w[2] >= success_max then
+    w[1] = 0
+  end
+end
+
+
+local Penalty = function(wt)
+  local wf_init = math.max(dict.freq_total, freq_init)
+  for i,word in ipairs(wt) do
+    local w = wt[word]
+    w[1] = wf_init
+    w[2] = 0
+  end
+end
+
+
 local CheckAnswer = function(answer)
   local good = {}
   local bad = {}
@@ -236,23 +257,11 @@ local CheckAnswer = function(answer)
   end
 
   for i,word in ipairs(good) do
-    local cw = correct[word]
-    if cw[2] < success_max then
-      cw[1] = math.floor(cw[1] / freq_decrement_base)
-      cw[2] = cw[2] + 1
-    end
-    if cw[2] >= success_max then
-      cw[1] = 0
-    end
+    Reward(correct[word])
   end
 
   if #bad > 0 or #good == 0 then
-    local cw_init = math.max(dict.freq_total, freq_init)
-    for i,word in ipairs(correct) do
-      local cw = correct[word]
-      cw[1] = cw_init
-      cw[2] = 0
-    end
+    Penalty(correct)
     io.write("\n\nError!\n\n")
     for i,word in ipairs(bad) do
       io.write(indent, word, "\n")
@@ -261,7 +270,9 @@ local CheckAnswer = function(answer)
 
   io.write("\n\nCorrect :\n\n")
   for i,word in ipairs(correct) do
-    io.write(indent, word, " ", string.rep("+", correct[word][2]), "\n")
+    io.write(indent, word, " ")
+    io.write(string.rep("+", correct[word][2]))
+    io.write(string.rep("-", success_max - correct[word][2]), "\n")
   end
 
   dict.freq_buf = MaxFreq(correct)
