@@ -191,9 +191,7 @@ local SelectQuestion = function()
           RestoreFreq()
         end
 
-        if dict.freq_total > answer[0][1] then
-          ChangeFreq(answer[0], 0)
-        end
+        ChangeFreq(answer[0], 0)
 
         answer[0][2] = answer[0][2] + 1
 
@@ -218,9 +216,9 @@ local InputAnswer = function()
   local answer = {}
   for i=1,#correct do
     io.write(dict.lang[dict.question[2]], " : ")
-    local next_answer = io.read()
+    local next_answer = string.match(io.read(),"%s*(.-)%s*$")
     if next_answer == "" then break end
-    table.insert(answer,next_answer)
+    table.insert(answer,(string.gsub(next_answer,"%s+"," ")))
   end
 
   return answer
@@ -269,7 +267,7 @@ local CheckAnswer = function(answer)
   dict.freq_buf = MaxFreq(correct)
 
   if correct[0][1] == dict.freq_total then
-    ChangeFreq(correct[0], dict.freq_buf)
+    RestoreFreq()
     if dict.freq_total == 0 then
       return true
     end
