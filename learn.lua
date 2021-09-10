@@ -22,15 +22,9 @@ local freq_init
 
 -------------------------------------------
 
-local AdjustConstants = function()
+local LoadConstants = function()
   success_max = dict.success_max or 3
   freq_decrement_base = dict.freq_decrement_base or 2
-
-  success_max = math.min(math.max(math.floor(success_max), 1), 9)
-  freq_decrement_base = math.min(math.max(freq_decrement_base, 1), 10)
-
-  dict.success_max = dict.success_max and success_max
-  dict.freq_decrement_base = dict.freq_decrement_base and freq_decrement_base 
 
   freq_init = math.ceil(math.ceil(freq_decrement_base) ^ success_max)
 end
@@ -38,7 +32,7 @@ end
 
 local query_mt = {
   __index = function(t,k)
-              t[k] = {[0] = {freq_init, 0}}
+              t[k] = {[0] = {0, 0}}
               return t[k]
             end
 }
@@ -76,11 +70,11 @@ local AppendDict = function(new_dict)
   end
 
   if new_dict.success_max then
-    dict.success_max = new_dict.success_max
+    dict.success_max = math.min(math.max(math.floor(new_dict.success_max), 1), 9)
   end
 
   if new_dict.freq_decrement_base then
-    dict.freq_decrement_base = new_dict.freq_decrement_base
+    dict.freq_decrement_base = math.min(math.max(new_dict.freq_decrement_base, 1), 10)
   end
 end
 
@@ -139,6 +133,7 @@ end
 
 local FillQuery = function()
   dict.freq_total = 0
+  LoadConstants()
 
   TraverseQueryWith(
     function(question, answer, wordQ)
@@ -152,6 +147,7 @@ local FillQuery = function()
           end
         end
       end
+      answer[0][1] = MaxFreq(answer)
       dict.freq_total = dict.freq_total + answer[0][1]
     end
   )
@@ -169,7 +165,10 @@ end
 
 
 local RestoreFreq = function()
-  ChangeFreq((correct or AnswerFor(dict.question))[0], dict.freq_buf)
+  if dict.question then
+    local correct = correct or AnswerFor(dict.question)
+    ChangeFreq(correct[0], MaxFreq(correct))
+  end
 end
 
 
@@ -187,12 +186,8 @@ local SelectQuestion = function()
     function(question, answer)
       freq = freq + answer[0][1]
       if freq >= dice then
-        if dict.question then
-          RestoreFreq()
-        end
-
+        RestoreFreq()
         ChangeFreq(answer[0], 0)
-
         answer[0][2] = answer[0][2] + 1
 
         dict.question = question
@@ -275,8 +270,6 @@ local CheckAnswer = function(answer)
     io.write(string.rep("-", success_max - correct[word][2]), "\n")
   end
 
-  dict.freq_buf = MaxFreq(correct)
-
   if correct[0][1] == dict.freq_total then
     RestoreFreq()
     if dict.freq_total == 0 then
@@ -342,13 +335,13 @@ else
   end
   if dict.query then
     CollectVocabularies()
+    FillQuery()
   end
 end
 
-AdjustConstants()
 
 if dict.query then
-  FillQuery()
+  LoadConstants()
   math.randomseed(os.time())
 
   while SelectQuestion() and CheckAnswer(InputAnswer()) do end
