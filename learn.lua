@@ -100,7 +100,7 @@ end
 
 
 local AnswerFor = function(q)
-  return dict.query[q[1]][q[2]][q[3]]
+  return q and dict.query[q[1]][q[2]][q[3]]
 end
 
 
@@ -131,6 +131,28 @@ local MaxFreq = function(ans)
 end
 
 
+local Refill = function(wt, wf_init)
+  for i,word in ipairs(wt) do
+    local w = wt[word]
+    w[1] = wf_init
+    w[2] = 0
+  end
+end
+
+
+local ChangeFreq = function(t, v)
+    dict.freq_total = dict.freq_total - t[1] + v
+    t[1] = v
+end
+
+
+local RestoreFreq = function(answer)
+  if answer then
+    ChangeFreq(answer[0], MaxFreq(answer))
+  end
+end
+
+
 local FillQuery = function()
   dict.freq_total = 0
   LoadConstants()
@@ -142,13 +164,13 @@ local FillQuery = function()
           for k,wordA in ipairs(dict.data[data_line][question[2]]) do
             if not answer[wordA] then
               table.insert(answer, wordA)
-              answer[wordA] = {freq_init, 0}
+              answer[wordA] = {}
             end
           end
         end
       end
-      answer[0][1] = MaxFreq(answer)
-      dict.freq_total = dict.freq_total + answer[0][1]
+      Refill(answer, freq_init)
+      RestoreFreq(answer)
     end
   )
 end 
@@ -157,25 +179,19 @@ end
 local correct
 
 
-local ChangeFreq = function(t, v)
-    dict.freq_total = dict.freq_total - t[1]
-    t[1] = v
-    dict.freq_total = dict.freq_total + v
-end
-
-
-local RestoreFreq = function()
-  if dict.question then
-    local correct = correct or AnswerFor(dict.question)
-    ChangeFreq(correct[0], MaxFreq(correct))
-  end
-end
-
-
 local SelectQuestion = function()
 
   if dict.freq_total == 0 then
+    RestoreFreq(correct)
+  end
+
+  if dict.freq_total == 0 then
     io.write("\nDone!\n\n")
+    return false
+  end
+
+  io.write("\n\nNext question? [ Yn ] : ")
+  if io.read() ~= "" then
     return false
   end
 
@@ -186,9 +202,7 @@ local SelectQuestion = function()
     function(question, answer)
       freq = freq + answer[0][1]
       if freq >= dice then
-        RestoreFreq()
-        ChangeFreq(answer[0], 0)
-        answer[0][2] = answer[0][2] + 1
+        RestoreFreq(correct)
 
         dict.question = question
         correct = answer
@@ -231,21 +245,13 @@ local Reward = function(w)
 end
 
 
-local Penalty = function(wt)
-  local wf_init = math.max(dict.freq_total, freq_init)
-  for i,word in ipairs(wt) do
-    local w = wt[word]
-    w[1] = wf_init
-    w[2] = 0
-  end
-end
-
-
 local CheckAnswer = function(answer)
+
+  ChangeFreq(correct[0], 0)
+  correct[0][2] = correct[0][2] + 1
+
   local good = {}
   local bad = {}
-
-  local indent = string.rep(" ",utf8.len(dict.lang[dict.question[2]]) + 3)
 
   for i,word in ipairs(answer) do
     table.insert(correct[word] and good or bad, word)
@@ -255,8 +261,10 @@ local CheckAnswer = function(answer)
     Reward(correct[word])
   end
 
+  local indent = string.rep(" ",utf8.len(dict.lang[dict.question[2]]) + 3)
+
   if #bad > 0 or #good == 0 then
-    Penalty(correct)
+    Refill(correct, math.max(dict.freq_total, freq_init))
     io.write("\n\nError!\n\n")
     for i,word in ipairs(bad) do
       io.write(indent, word, "\n")
@@ -269,17 +277,6 @@ local CheckAnswer = function(answer)
     io.write(string.rep("+", correct[word][2]))
     io.write(string.rep("-", success_max - correct[word][2]), "\n")
   end
-
-  if correct[0][1] == dict.freq_total then
-    RestoreFreq()
-    if dict.freq_total == 0 then
-      return true
-    end
-  end
-
-  io.write("\n\nNext question? [ Yn ] : ")
-  return io.read() == ""
-
 end
 
 
@@ -342,9 +339,13 @@ end
 
 if dict.query then
   LoadConstants()
+  correct = AnswerFor(dict.question)
+
   math.randomseed(os.time())
 
-  while SelectQuestion() and CheckAnswer(InputAnswer()) do end
+  while SelectQuestion() do
+    CheckAnswer(InputAnswer())
+  end
 
   ShowStats()
 end
