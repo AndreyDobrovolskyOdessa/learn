@@ -297,20 +297,12 @@ local ShowStats = function()
 
   io.write("\nQuestions total = ", questions_total, "\n")
 
-  local ShowNumber = function(i)
-    local h = hist[i] or 0
-
-    io.write("\n",i," ")
-    for _ in function(s,v) return v > 0 and v // 2 or nil end, nil, h do
-      io.write("#")
-    end
-    if h > 2 then
-      io.write(" ", h)
-    end
-  end
-
   for i=0,success_max do
-    ShowNumber(i)
+    io.write("\n",i," ")
+    if hist[i] then
+      io.write(string.rep(">", math.floor(math.log(hist[i])/math.log(2))+1))
+      io.write( hist[i] > 2 and hist[i] or "")
+    end
   end
 
   io.write("\n\nMemory usage = ", math.ceil(collectgarbage("count")), " kB\n\n")
