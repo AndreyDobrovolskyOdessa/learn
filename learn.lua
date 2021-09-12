@@ -190,7 +190,7 @@ local SelectQuestion = function()
     return false
   end
 
-  io.write("\n\nNext question? [ Yn ] : ")
+  io.write("\n\nPress <ENTER> to continue ( any symbols to interrupt ) : ")
   if io.read() ~= "" then
     return false
   end
@@ -216,6 +216,15 @@ local SelectQuestion = function()
 end
 
 
+local Trim = function(l)
+  l = string.match(l, "%s*(.-)%s*$")
+  l = string.gsub (l, "%s+", " ")
+  l = string.gsub (l, " (%p)","%1")
+
+  return l 
+end
+
+
 local InputAnswer = function()
   os.execute("clear")
 
@@ -225,9 +234,11 @@ local InputAnswer = function()
   local answer = {}
   for i=1,#correct do
     io.write(dict.lang[dict.question[2]], " : ")
-    local next_answer = string.match(io.read(),"%s*(.-)%s*$")
-    if next_answer == "" then break end
-    table.insert(answer,(string.gsub(next_answer,"%s+"," ")))
+    local next_answer = io.read()
+    if next_answer == "" then
+      break
+    end
+    table.insert(answer,Trim(next_answer))
   end
 
   return answer
