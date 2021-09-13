@@ -38,6 +38,16 @@ local query_mt = {
 }
 
 
+local Trim = function(l)
+  l = string.match(l, "%s*(.-)%s*$")
+  l = string.gsub (l, "(%p)", "%1 ")
+  l = string.gsub (l, "%s+", " ")
+  l = string.gsub (l, " (%p)", "%1")
+
+  return l
+end
+
+
 local AppendDict = function(new_dict)
 
   if new_dict.lang then
@@ -52,8 +62,12 @@ local AppendDict = function(new_dict)
   if new_dict.data then
     for i,new_data in ipairs(new_dict.data) do
       local reordered_data = {}
-      for j,k in ipairs(new_data) do
-        reordered_data [dict.lang[new_dict.lang[j]]] = type(k) == "table" and k or {k}
+      for j,x in ipairs(new_data) do
+        local new_table = type(x) == "table" and x or {x}
+        for k,v in ipairs(new_table) do
+          new_table[k] = Trim(v)
+        end
+        reordered_data [dict.lang[new_dict.lang[j]]] = new_table
       end
       table.insert(dict.data, reordered_data)
     end
@@ -213,15 +227,6 @@ local SelectQuestion = function()
   )
 
   return true
-end
-
-
-local Trim = function(l)
-  l = string.match(l, "%s*(.-)%s*$")
-  l = string.gsub (l, "%s+", " ")
-  l = string.gsub (l, " (%p)","%1")
-
-  return l 
 end
 
 
